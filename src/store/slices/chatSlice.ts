@@ -26,6 +26,11 @@ interface ChatState {
   selectedUser: User | null;
   isUsersLoading: boolean;
   isMessagesLoading: boolean;
+
+  // --- NEW ---
+  onlineUsers: string[];
+  onlineCount: number;
+  typing: Record<string, boolean>; // userId → typing status
 }
 
 const initialState: ChatState = {
@@ -34,6 +39,11 @@ const initialState: ChatState = {
   selectedUser: null,
   isUsersLoading: false,
   isMessagesLoading: false,
+
+  // --- NEW ---
+  onlineUsers: [],
+  onlineCount: 0,
+  typing: {},
 };
 
 // ------------------ Async Thunks ------------------
@@ -65,7 +75,7 @@ export const getMessages = createAsyncThunk<Message[], string, { rejectValue: st
 
 export const sendMessage = createAsyncThunk<
   Message,
-  { receiverId: string; text: string; image?: string }, // <-- add image?
+  { receiverId: string; text: string; image?: string },
   { state: RootState; rejectValue: string }
 >(
   "chat/sendMessage",
@@ -102,6 +112,20 @@ const chatSlice = createSlice({
       state.users = [];
       state.messages = [];
       state.selectedUser = null;
+      state.onlineUsers = [];
+      state.onlineCount = 0;
+      state.typing = {};
+    },
+
+    // --- NEW ---
+    setOnlineUsers(state, action: PayloadAction<string[]>) {
+      state.onlineUsers = action.payload;
+    },
+    setOnlineCount(state, action: PayloadAction<number>) {
+      state.onlineCount = action.payload;
+    },
+    setTyping(state, action: PayloadAction<{ userId: string; isTyping: boolean }>) {
+      state.typing[action.payload.userId] = action.payload.isTyping;
     },
   },
   extraReducers: (builder) => {
@@ -138,7 +162,14 @@ const chatSlice = createSlice({
   },
 });
 
-export const { setSelectedUser, addMessage, clearChat } = chatSlice.actions;
+export const {
+  setSelectedUser,
+  addMessage,
+  clearChat,
+  setOnlineUsers,
+  setOnlineCount,
+  setTyping,
+} = chatSlice.actions;
 
 export const selectChat = (state: RootState) => state.chat;
 

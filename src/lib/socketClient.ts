@@ -1,29 +1,25 @@
-// lib/socketClient.ts  <-- client-side only
+// src/lib/socketClient.ts
 import { io, Socket } from "socket.io-client";
 
 let socket: Socket | null = null;
 
-export const connectSocket = (userId: string) => {
-  if (socket?.connected) return socket;
-
-  socket = io("http://localhost:3000", { // or your production URL
-    query: { userId },
-  });
-
-  socket.on("connect", () => {
-    console.log("Socket connected:", socket?.id);
-  });
-
-  socket.on("disconnect", () => {
-    console.log("Socket disconnected");
-  });
-
+export function initSocket() {
+  if (!socket) {
+    socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:4000", {
+      withCredentials: true, // IMPORTANT: send cookies (includes your JWT httpOnly token)
+      transports: ["websocket"], // make sure websockets are used
+    });
+  }
   return socket;
-};
+}
 
-export const disconnectSocket = () => {
-  if (socket?.connected) socket.disconnect();
-  socket = null;
-};
+export function getSocket() {
+  return socket;
+}
 
-export const getSocket = () => socket;
+export function disconnectSocket() {
+  if (socket) {
+    socket.disconnect();
+    socket = null;
+  }
+}

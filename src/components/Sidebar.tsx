@@ -8,10 +8,8 @@ import { Users } from "lucide-react";
 
 const Sidebar = () => {
   const dispatch = useAppDispatch();
-  const { users, selectedUser, isUsersLoading } = useAppSelector((state) => state.chat);
+  const { users, selectedUser, isUsersLoading, onlineUsers  } = useAppSelector((state) => state.chat);
 
-  // 🚨 For now, hardcode online users as empty array
-  const onlineUsers: string[] = [];
 
   const [showOnlineOnly, setShowOnlineOnly] = useState(false);
 
@@ -46,7 +44,7 @@ const Sidebar = () => {
             />
             <span className="text-sm">Show online only</span>
           </label>
-          <span className="text-xs text-zinc-500">(0 online)</span>
+          <span className="text-xs text-zinc-500">({onlineUsers.length - 1} online)</span>
         </div>
       </div>
 
@@ -69,13 +67,18 @@ const Sidebar = () => {
                 alt={user.fullName}
                 className="size-12 object-cover rounded-full"
               />
-              {/* 🚨 skip online badge for now */}
+              {/* 🚨 skip online badge for now ,,, I have added online badge*/}
+              {onlineUsers.includes(user._id) && (
+                <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></span>
+              )}
             </div>
 
             {/* User info */}
             <div className="hidden lg:block text-left min-w-0">
               <div className="font-medium text-gray-600 truncate">{user.fullName}</div>
-              <div className="text-sm text-zinc-400">Offline</div>
+              <div className="text-sm text-zinc-400">
+                {onlineUsers.includes(user._id) ? "Online" : "Offline"}
+              </div>
             </div>
           </button>
         ))}
