@@ -63,6 +63,7 @@ export const logout = createAsyncThunk("auth/logout", async (_, { rejectWithValu
   try {
     await axiosInstance.post("/auth/logout");
     toast.success("Logged out successfully");
+    
     return null;
   } catch (error: any) {
     toast.error(error.response?.data?.message || "Logout failed");
@@ -85,21 +86,16 @@ export const updateProfile = createAsyncThunk("auth/updateProfile", async (data:
 const authSlice = createSlice({
   name: "auth",
   initialState,
-  reducers: {},
+  reducers: {
+    initializeAuth: (state) => {
+      const storedUser = localStorage.getItem("authUser");
+      if (storedUser) {
+        state.authUser = JSON.parse(storedUser);
+      }
+      state.isCheckingAuth = false;
+    },
+  },
   extraReducers: (builder) => {
-    // Check Auth
-    builder
-      .addCase(checkAuth.pending, (state) => {
-        state.isCheckingAuth = true;
-      })
-      .addCase(checkAuth.fulfilled, (state, action: PayloadAction<AuthUser>) => {
-        state.authUser = action.payload;
-        state.isCheckingAuth = false;
-      })
-      .addCase(checkAuth.rejected, (state) => {
-        state.authUser = null;
-        state.isCheckingAuth = false;
-      });
 
     // Signup
     builder
@@ -108,7 +104,7 @@ const authSlice = createSlice({
       })
       .addCase(signup.fulfilled, (state, action: PayloadAction<AuthUser>) => {
         state.authUser = action.payload;
-        state.isSigningUp = false;
+        localStorage.setItem("authUser", JSON.stringify(action.payload)); // ✅ Save
       })
       .addCase(signup.rejected, (state) => {
         state.isSigningUp = false;
@@ -120,8 +116,9 @@ const authSlice = createSlice({
         state.isLoggingIn = true;
       })
       .addCase(login.fulfilled, (state, action: PayloadAction<AuthUser>) => {
-        state.authUser = action.payload;
         state.isLoggingIn = false;
+        state.authUser = action.payload;
+        localStorage.setItem("authUser", JSON.stringify(action.payload)); // ✅ Save
       })
       .addCase(login.rejected, (state) => {
         state.isLoggingIn = false;
@@ -130,7 +127,9 @@ const authSlice = createSlice({
     // Logout
     builder.addCase(logout.fulfilled, (state) => {
       state.authUser = null;
-    });
+      state.isLoggingIn = false;
+      localStorage.removeItem("authUser"); // ✅ Clear
+    })
 
     // Update Profile
     builder
@@ -147,4 +146,5 @@ const authSlice = createSlice({
   },
 });
 
+export const { initializeAuth } = authSlice.actions;
 export default authSlice.reducer;

@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "react-hot-toast";
 import { useAppDispatch, useAppSelector } from "../store/hooks";
-import { checkAuth } from "../store/slices/authSlice";
+import { checkAuth, initializeAuth } from "../store/slices/authSlice";
 
 import Navbar from "../components/Navbar";
 import Sidebar from "../components/Sidebar";
@@ -19,7 +19,7 @@ const HomePage = () => {
 
   // Check auth on mount
   useEffect(() => {
-    dispatch(checkAuth());
+    dispatch(initializeAuth());
   }, [dispatch]);
 
   // Redirect if not logged in

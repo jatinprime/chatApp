@@ -3,6 +3,7 @@ import jwt from "jsonwebtoken";
 import dbConnect from "@/lib/dbConnect";
 import User from "@/models/User";
 import cloudinary from "@/lib/cloudinary";
+import streamifier from "streamifier"; // ✅ new helper
 
 export async function PUT(req: Request) {
   try {
@@ -34,11 +35,18 @@ export async function PUT(req: Request) {
     // Convert to base64
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
-    const base64 = `data:${file.type};base64,${buffer.toString("base64")}`;
+    // ✅ Upload with stream (Cloudinary handles MIME automatically)
+    const uploadRes: any = await new Promise((resolve, reject) => {
+      const uploadStream = cloudinary.uploader.upload_stream(
+        { folder: "profiles" },
+        (error, result) => {
+          if (error) return reject(error);
+          resolve(result);
+        }
+      );
 
-    // Upload to Cloudinary
-    const uploadRes = await cloudinary.uploader.upload(base64, { folder: "profiles" });
-
+      streamifier.createReadStream(buffer).pipe(uploadStream);
+    });
     if (!uploadRes.secure_url) {
       return NextResponse.json({ message: "Error in uploading image" }, { status: 500 });
     }

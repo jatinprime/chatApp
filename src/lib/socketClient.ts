@@ -7,7 +7,7 @@ export function initSocket() {
   if (!socket) {
     socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:4000", {
       withCredentials: true, // IMPORTANT: send cookies (includes your JWT httpOnly token)
-      transports: ["websocket"], // make sure websockets are used
+      transports: ["polling", "websocket"], // make sure websockets are used
     });
   }
   return socket;

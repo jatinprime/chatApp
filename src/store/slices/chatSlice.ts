@@ -18,6 +18,8 @@ export interface Message {
   text: string;
   createdAt: string;
   image?: string;
+  clientId?: string; // optimistic id from client
+  status?: "sending" | "sent" | "failed"; // optional status
 }
 
 interface ChatState {
@@ -31,6 +33,7 @@ interface ChatState {
   onlineUsers: string[];
   onlineCount: number;
   typing: Record<string, boolean>; // userId → typing status
+  disappearing: Record<string, boolean>; // userId -> boolean
 }
 
 const initialState: ChatState = {
@@ -44,6 +47,7 @@ const initialState: ChatState = {
   onlineUsers: [],
   onlineCount: 0,
   typing: {},
+  disappearing: {},
 };
 
 // ------------------ Async Thunks ------------------
@@ -83,7 +87,7 @@ export const sendMessage = createAsyncThunk<
     try {
       const selectedUser = getState().chat.selectedUser;
       if (!selectedUser) throw new Error("No selected user");
-
+      // console.log(messageData) ;
       const res = await axiosInstance.post(
         `/messages/send/${selectedUser._id}`,
         messageData
@@ -105,9 +109,6 @@ const chatSlice = createSlice({
       state.selectedUser = action.payload;
       state.messages = []; // reset messages on user change
     },
-    addMessage(state, action: PayloadAction<Message>) {
-      state.messages.push(action.payload);
-    },
     clearChat(state) {
       state.users = [];
       state.messages = [];
@@ -115,6 +116,57 @@ const chatSlice = createSlice({
       state.onlineUsers = [];
       state.onlineCount = 0;
       state.typing = {};
+    },
+    
+    // inside reducers:
+    addMessage(state, action: PayloadAction<Message & { clientId?: string }>) {
+      const incoming = action.payload as Message & { clientId?: string };
+
+      // treat clientId as alternate unique id
+      const exists = state.messages.find(
+        (m) =>
+          m._id === incoming._id ||
+          // @ts-ignore - some messages may carry clientId property
+          ((m as any).clientId && incoming.clientId && (m as any).clientId === incoming.clientId)
+      );
+      if (exists) return; // already present -> skip
+
+      // push new message
+      state.messages.push(incoming as Message);
+    },
+
+    updateMessage(state, action: PayloadAction<{ clientId?: string; message: Message }>) {
+      const { clientId, message } = action.payload;
+      const matchIdx = state.messages.findIndex(
+        (m) =>
+          m._id === message._id ||
+          (clientId && ((m as any).clientId === clientId || m._id === clientId))
+      );
+
+      // ensure message has explicit sent status (unless ephemeral)
+      const toStore: Message = {
+        ...message,
+        status: message.status ?? "sent",
+      };
+
+      if (matchIdx !== -1) {
+        // preserve any clientId on optimistic message
+        const preservedClientId = (state.messages[matchIdx] as any).clientId;
+        state.messages[matchIdx] = message;
+        if (preservedClientId) (state.messages[matchIdx] as any).clientId = preservedClientId;
+      } else {
+        // not found -> append saved message
+        state.messages.push(message);
+      }
+    },
+
+    // mark existing optimistic message as failed (used on REST failure)
+    markMessageFailed(state, action: PayloadAction<{ clientId: string }>) {
+      const { clientId } = action.payload;
+      const idx = state.messages.findIndex((m) => m.clientId === clientId || m._id === clientId);
+      if (idx !== -1) {
+        state.messages[idx].status = "failed";
+      }
     },
 
     // --- NEW ---
@@ -126,6 +178,10 @@ const chatSlice = createSlice({
     },
     setTyping(state, action: PayloadAction<{ userId: string; isTyping: boolean }>) {
       state.typing[action.payload.userId] = action.payload.isTyping;
+    },
+    toggleDisappearing(state, action: PayloadAction<{ userId: string; enabled: boolean }>) {
+      const { userId, enabled } = action.payload;
+      state.disappearing = { ...state.disappearing, [userId]: enabled };
     },
   },
   extraReducers: (builder) => {
@@ -169,6 +225,9 @@ export const {
   setOnlineUsers,
   setOnlineCount,
   setTyping,
+  toggleDisappearing,
+  updateMessage,
+  markMessageFailed
 } = chatSlice.actions;
 
 export const selectChat = (state: RootState) => state.chat;

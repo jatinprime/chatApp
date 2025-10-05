@@ -1,3 +1,6 @@
+// src/components/ChatContainer.tsx
+"use client";
+
 import { useEffect, useRef } from "react";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 
@@ -10,7 +13,7 @@ import MessageSkeleton from "./skeletons/MessageSkeleton";
 
 const ChatContainer = () => {
   const dispatch = useAppDispatch();
-  const { messages, isMessagesLoading, selectedUser } = useAppSelector(selectChat);
+  const { messages, isMessagesLoading, selectedUser, typing } = useAppSelector(selectChat);
   const { authUser } = useAppSelector((state) => state.auth);
 
   const messageEndRef = useRef<HTMLDivElement | null>(null);
@@ -46,6 +49,8 @@ const ChatContainer = () => {
       </div>
     );
   }
+
+  const isTyping = !!typing?.[selectedUser._id];
 
   return (
     <div className="flex-1 flex flex-col overflow-auto">
@@ -91,6 +96,13 @@ const ChatContainer = () => {
             </div>
           </div>
         ))}
+
+        {/* Typing indicator (shows right after messages list) */}
+        {isTyping && (
+          <div className="px-4 py-2 text-sm text-zinc-500">
+            {selectedUser.fullName} is typing…
+          </div>
+        )}
 
         {/* Scroll anchor */}
         <div ref={messageEndRef} />
